@@ -1,5 +1,9 @@
 # TELECOM-CUSTOMER-CHURN-PREDICTION  
 
+## [RMarkdown File](https://github.com/Chase-Yi/TELECOM-CUSTOMER-CHURN-PREDICTION/blob/main/CUSTOMER_CHURN.Rmd)  
+
+## [PDF Report](https://github.com/Chase-Yi/TELECOM-CUSTOMER-CHURN-PREDICTION/blob/main/CUSTOMER_CHURN.pdf)  
+
 ## Introduction  
 This repository focuses on predicting customer churn in the telecom industry.  
 Customer churn, or customer attrition, refers to the situation when customers discontinue using a company's product or service.  

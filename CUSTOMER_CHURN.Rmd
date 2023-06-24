@@ -1,0 +1,784 @@
+---
+title: "TELECOM CUSTOMER CHURN PREDICTION"
+author: "Yipeng CHEN"
+output:
+  pdf_document:
+    latex_engine: xelatex
+fontsize: 12pt
+linkcolor: red
+urlcolor : blue
+mainfont: Arial
+df_print: kable 
+highlight: tango
+theme: sky
+---
+
+<style>
+body {
+text-align: justify}
+</style>
+
+```{r, echo=FALSE}
+setwd("C:/Users/47804/Desktop/customer")
+```
+
+![Customer Churn](C:/Users/47804/Desktop/customer/customer.png)  
+
+>
+
+***Did you know that attracting a new customer***  
+***costs five times as much as keeping an existing one?***  
+
+>
+
+Initially,  
+
+I would like to express my gratitude to the following Kaggle notebooks  
+
+that have served as a source of inspiration for the creation of this report:  
+
+>
+
+[CUSTOMER CHURN PREDICTION - bhartiprasad17](https://www.kaggle.com/code/bhartiprasad17/customer-churn-prediction)
+
+[Telecom Churn Prediction - bandiatindra](https://www.kaggle.com/code/bandiatindra/telecom-churn-prediction)
+
+\newpage
+\tableofcontents
+\newpage
+
+# 1. Introduction
+
+>
+
+**What is Customer Churn?**  
+
+Customer churn or customer attrition is defined as when customers discontinue using a company's product or service.  
+
+Individualized customer retention is tough because most firms have a large number of customers and can't afford to devote much time to each of them. The costs would be too great, outweighing the additional revenue. However, if a corporation could forecast which customers are likely to leave ahead of time, it could focus customer retention efforts only on these "high risk" clients. The ultimate goal is to expand its coverage area and retrieve more customers loyalty.  
+
+Customer churn is a critical metric because it is much less expensive to retain existing customers than it is to acquire new customers. Moreover, customer churn is a giant business killer. Even small increases in churn can cause a significant cut in revenues.
+
+>
+
+**To reduce customer churn, companies need to predict which customers are at high risk of churn.**  
+
+To detect early signs of potential churn, one must first develop a holistic view of the customers and their interactions across numerous channels, including store/branch visits, product purchase histories, customer service calls, web-based transactions, and social media interactions, to mention a few.  
+
+As a result, by addressing churn, these businesses may not only preserve their market position, but also grow and thrive. More customers they have in their network, the lower the cost of initiation and the larger the profit. As a result, the company's key focus for success is reducing client attrition and implementing effective retention strategy.  
+
+\newpage
+
+## 1.1 About Dataset  
+
+**Context**  
+
+[IBM Sample Data Sets](https://www.kaggle.com/datasets/blastchar/telco-customer-churn)
+
+"Predict behavior to retain customers. You can analyze all relevant customer data and develop focused customer retention programs."  
+
+**Content**  
+
+Each row represents a customer, each column contains customer’s attributes.  
+
+The data set includes information about:  
+
+a.  Customers who left within the last month – the column is called Churn  
+
+b.  Services that each customer has signed up for – phone, multiple lines, internet, online security, online backup, device protection, tech support, and streaming TV and movies  
+
+c.  Customer account information – how long they’ve been a customer, contract, payment method, paperless billing, monthly charges, and total charges  
+
+d.  Demographic info about customers – gender, age range, and if they have partners and dependents  
+
+The raw data contains 7043 rows (customers) and 21 columns (features).  
+
+The “Churn” column is our target.  
+
+**Columns description**  
+
+```{r, echo=FALSE}
+pacman::p_load(knitr,kableExtra)
+
+# Create a data frame with sample data
+data <- data.frame(
+  Column_Name = c('customerID','gender','SeniorCitizen','Partner','Dependents','tenure','PhoneService',
+                  'MultipleLines','InternetService','OnlineSecurity','OnlineBackup','DeviceProtection','TechSupport','StreamingTV',
+                  'StreamingMovies','Contract','PaperlessBilling','PaymentMethod','MonthlyCharges','TotalCharges','Churn'),
+  Column_Description = c('Customer ID','Whether the customer is a male or a female','Whether the customer is a senior citizen or not (1, 0)','Whether the customer has a partner or not (Yes, No)','Whether the customer has dependents or not (Yes, No)','Number of months the customer has stayed with the company','Whether the customer has a phone service or not (Yes, No)',
+                         'Whether the customer has multiple lines or not (Yes, No, No phone service)','Customer’s internet service provider (DSL, Fiber optic, No)','Whether the customer has online security or not (Yes, No, No internet service)','Whether the customer has online backup or not (Yes, No, No internet service)','Whether the customer has device protection or not (Yes, No, No internet service)','Whether the customer has tech support or not (Yes, No, No internet service)','Whether the customer has streaming TV or not (Yes, No, No internet service)',
+                         'Whether the customer has streaming movies or not (Yes, No, No internet service)','The contract term of the customer (Month-to-month, One year, Two year)','Whether the customer has paperless billing or not (Yes, No)','The customer’s payment method (Electronic check, Mailed check, Bank transfer (automatic), Credit card (automatic))','The amount charged to the customer monthly','The total amount charged to the customer','Whether the customer churned or not (Yes or No)')
+)
+
+# Generate the data table
+kable(data) %>% kable_styling(font_size = 7,latex_options = "HOLD_position")  
+
+```
+
+\newpage
+
+# 2. Loading libraries and data
+
+```{python}
+import pandas as pd
+import numpy as np
+import missingno as msno
+import matplotlib.pyplot as plt
+import seaborn as sns
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import warnings
+warnings.filterwarnings('ignore')
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import LabelEncoder
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.ensemble import GradientBoostingClassifier
+
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+```
+
+```{python}
+# Loading data
+df = pd.read_csv('Telco-Customer-Churn.csv')
+```
+
+\newpage
+
+# 3. Undertanding the data
+
+```{python}
+df
+```
+
+```{python}
+df.shape
+```
+
+```{python}
+df.columns.values
+```
+
+\newpage
+
+```{python}
+df.info()
+```
+
+\newpage
+
+```{python}
+df.dtypes
+```
+
+```{python}
+# Converting "TotalCharges" to a numerical data type
+df['TotalCharges'] = pd.to_numeric(df.TotalCharges, errors='coerce')
+```
+
+\newpage
+
+# 4. Visualize missing values
+
+```{python}
+# Visualize missing values as a bar plot
+msno.bar(df,fontsize=11,figsize=(20,10))
+```
+
+From the above visualization,  
+we can observe that there are 11 missing values for "TotalCharges".  
+
+\newpage
+
+```{python}
+# Calculate the number of missing values in each column of the DataFrame
+df.isnull().sum()
+```
+
+\newpage
+
+# 5. Data Manipulation
+
+```{python}
+# Remove customer IDs from the data set
+df = df.drop(['customerID'], axis = 1)
+df
+```
+```{python}
+# We know that the "TotalCharges" has 11 missing values. Let's check this :
+df[np.isnan(df['TotalCharges'])]
+```
+
+\newpage
+
+```{python}
+# Now, Let us remove these 11 rows from our data set :
+df.dropna(inplace = True)
+df.isnull().sum()
+```
+```{python}
+df.shape
+```
+
+\newpage
+
+```{python}
+df["SeniorCitizen"]= df["SeniorCitizen"].map({0: "No", 1: "Yes"})
+df.head()
+```
+
+```{python}
+df["InternetService"].describe(include=['object', 'bool'])
+```
+
+```{python}
+numerical_cols = ['tenure', 'MonthlyCharges', 'TotalCharges']
+df[numerical_cols].describe()
+```
+
+\newpage
+
+# 6. Data Visualization
+
+```{python}
+# g_labels = ['Male', 'Female']
+# c_labels = ['No', 'Yes']
+# 
+# # Create subplots: use 'domain' type for Pie subplot
+# fig = make_subplots(rows=1, cols=2,
+#                     specs=[[{'type':'domain'}, {'type':'domain'}]])
+# fig.add_trace(go.Pie(labels=g_labels, 
+#                      values=df['gender'].value_counts(), name="Gender"),
+#                      1, 1)
+# fig.add_trace(go.Pie(labels=c_labels, 
+#                      values=df['Churn'].value_counts(), name="Churn"),
+#                      1, 2)
+#                      
+# # Use `hole` to create a donut-like pie chart
+# fig.update_traces(hole=.4, hoverinfo="label+percent+name", textfont_size=16)
+# 
+# fig.update_layout(
+#     title_text="Gender and Churn Distributions",
+#     # Add annotations in the center of the donut pies.
+#     annotations=[dict(text='Gender', x=0.16, y=0.5, 
+#                  font_size=20, showarrow=False),
+#                  dict(text='Churn', x=0.84, y=0.5, 
+#                  font_size=20, showarrow=False)])
+# fig.show()
+```
+
+\newpage
+
+![Gender and Churn Distributions](C:/Users/47804/Desktop/customer/plot1.png)  
+
+26.6 % of customers switched to another firm.  
+
+Customers are 49.5 % female and 50.5 % male.  
+
+```{python}
+df["Churn"][df["Churn"]=="No"].groupby(by=df["gender"]).count()
+```
+
+```{python}
+df["Churn"][df["Churn"]=="Yes"].groupby(by=df["gender"]).count()
+```
+
+\newpage
+
+```{python,results="hide"}
+plt.figure(figsize=(6, 6))
+labels =["Churn: Yes","Churn:No"]
+values = [1869,5163]
+labels_gender = ["F","M","F","M"]
+sizes_gender = [939,930 , 2544,2619]
+colors = ['#ff6666', '#66b3ff']
+colors_gender = ['#c2c2f0','#ffb3e6', '#c2c2f0','#ffb3e6']
+explode = (0.3,0.3) 
+explode_gender = (0.1,0.1,0.1,0.1)
+textprops = {"fontsize":15}
+#Plot
+plt.pie(values, labels=labels,autopct='%1.1f%%',
+pctdistance=1.08, labeldistance=0.8,colors=colors, startangle=90,frame=True, 
+explode=explode,radius=10, textprops =textprops, counterclock = True, )
+plt.pie(sizes_gender,labels=labels_gender,
+colors=colors_gender,startangle=90, explode=explode_gender,radius=7, 
+textprops =textprops, counterclock = True, )
+#Draw circle
+centre_circle = plt.Circle((0,0),5,color='black', fc='white',linewidth=0)
+fig = plt.gcf()
+fig.gca().add_artist(centre_circle)
+
+plt.title('Churn Distribution w.r.t Gender: Male(M), Female(F)', 
+fontsize=15, y=1.1)
+
+# show plot 
+plt.axis('equal')
+plt.tight_layout()
+plt.show()
+```
+
+There is negligible difference in customer percentage.  
+Both genders behaved in similar fashion when it comes to migrating to another service provider.  
+
+\newpage
+
+```{python}
+# fig = px.histogram(df, x="Churn", color="Contract", barmode="group", 
+#                    title="<b>Customer contract distribution<b>")
+# fig.update_layout(width=700, height=500, bargap=0.1)
+# fig.show()
+```
+
+![Customer contract distribution](C:/Users/47804/Desktop/customer/plot2.png)
+
+About 88% of customers with Month-to-Month Contract opted to move out compared to 9% of customers with One Year Contract and 3% with Two Year Contract.  
+
+\newpage
+
+```{python}
+# labels = df['PaymentMethod'].unique()
+# values = df['PaymentMethod'].value_counts()
+# 
+# fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.3)])
+# fig.update_layout(title_text="<b>Payment Method Distribution</b>")
+# fig.show()
+```
+
+![Payment Method Distribution](C:/Users/47804/Desktop/customer/plot3.png)
+
+\newpage
+
+```{python}
+# fig = px.histogram(df, x="Churn", color="PaymentMethod", 
+#       title="<b>Customer Payment Method distribution w.r.t. Churn</b>")
+# fig.update_layout(width=700, height=500, bargap=0.1)
+# fig.show()
+```
+
+![Customer Payment Method distribution w.r.t. Churn](C:/Users/47804/Desktop/customer/plot4.png)
+
+Major customers who moved out were having Electronic Check as Payment Method.  
+
+Customers who opted for Credit-Card automatic transfer or Bank Automatic Transfer and Mailed Check as Payment Method were less likely to move out.  
+
+\newpage
+
+```{python}
+df["InternetService"].unique()
+```
+
+```{python}
+df[df["gender"]=="Male"][["InternetService", "Churn"]].value_counts()
+```
+
+```{python}
+df[df["gender"]=="Female"][["InternetService", "Churn"]].value_counts()
+```
+A lot of customers choose the Fiber optic service and it's also evident that the customers who use Fiber optic have high churn rate, this might suggest a dissatisfaction with this type of internet service.  
+
+\newpage
+
+```{python}
+# fig = go.Figure()
+# fig.add_trace(go.Bar(
+#   x = [['Churn:No', 'Churn:No', 'Churn:Yes', 'Churn:Yes'],
+#        ["Female", "Male", "Female", "Male"]],
+#   y = [965, 992, 219, 240],
+#   name = 'DSL',
+# ))
+# fig.add_trace(go.Bar(
+#   x = [['Churn:No', 'Churn:No', 'Churn:Yes', 'Churn:Yes'],
+#        ["Female", "Male", "Female", "Male"]],
+#   y = [889, 910, 664, 633],
+#   name = 'Fiber optic',
+# ))
+# fig.add_trace(go.Bar(
+#   x = [['Churn:No', 'Churn:No', 'Churn:Yes', 'Churn:Yes'],
+#        ["Female", "Male", "Female", "Male"]],
+#   y = [690, 717, 56, 57],
+#   name = 'No Internet',
+# ))
+# fig.update_layout(
+#   title_text="<b>Churn Distribution w.r.t. Internet Service and Gender</b>")
+# fig.show()
+```
+
+![Churn Distribution w.r.t. Internet Service and Gender](C:/Users/47804/Desktop/customer/plot5.png)
+
+\newpage
+
+```{python}
+# color_map = {"Yes": "#FF97FF", "No": "#AB63FA"}
+# fig = px.histogram(df, x="Churn", color="Dependents", 
+#       barmode="group", title="<b>Dependents distribution</b>", 
+#       color_discrete_map=color_map)
+# fig.update_layout(width=700, height=500, bargap=0.1)
+# fig.show()
+```
+
+![Dependents distribution](C:/Users/47804/Desktop/customer/plot6.png)
+
+Customers without dependents are more likely to churn.  
+
+\newpage
+
+```{python}
+# color_map = {"Yes": '#FFA15A', "No": '#00CC96'}
+# fig = px.histogram(df, x="Churn", color="Partner", 
+#       barmode="group", title="<b>Chrun distribution w.r.t. Partners</b>", 
+#       color_discrete_map=color_map)
+# fig.update_layout(width=700, height=500, bargap=0.1)
+# fig.show()
+```
+
+![Chrun distribution w.r.t. Partners](C:/Users/47804/Desktop/customer/plot7.png)
+
+Customers that doesn't have partners are more likely to churn.  
+
+\newpage
+
+```{python}
+# color_map = {"Yes": '#00CC96', "No": '#B6E880'}
+# fig = px.histogram(df, x="Churn", color="SeniorCitizen", 
+#       title="<b>Chrun distribution w.r.t. Senior Citizen</b>", 
+#       color_discrete_map=color_map)
+# fig.update_layout(width=700, height=500, bargap=0.1)
+# fig.show()
+```
+
+![Chrun distribution w.r.t. Senior Citizen](C:/Users/47804/Desktop/customer/plot8.png)
+
+It can be observed that the fraction of senior citizen is very less.  
+
+Most of the senior citizens do not churn.  
+
+\newpage
+
+```{python}
+# color_map = {"Yes": "#FF97FF", "No": "#AB63FA"}
+# fig = px.histogram(df, x="Churn", color="OnlineSecurity", 
+#       barmode="group", title="<b>Churn w.r.t Online Security</b>", 
+#       color_discrete_map=color_map)
+# fig.update_layout(width=700, height=500, bargap=0.1)
+# fig.show()
+```
+
+![Churn w.r.t Online Security](C:/Users/47804/Desktop/customer/plot9.png)
+
+Most customers churn in the absence of online security.  
+
+\newpage
+
+```{python}
+# color_map = {"Yes": '#FFA15A', "No": '#00CC96'}
+# fig = px.histogram(df, x="Churn", color="PaperlessBilling",  
+#       title="<b>Chrun distribution w.r.t. Paperless Billing</b>", 
+#       color_discrete_map=color_map)
+# fig.update_layout(width=700, height=500, bargap=0.1)
+# fig.show()
+```
+
+![Chrun distribution w.r.t. Paperless Billing](C:/Users/47804/Desktop/customer/plot10.png)
+
+Customers with Paperless Billing are most likely to churn.  
+
+\newpage
+
+```{python}
+# fig = px.histogram(df, x="Churn", color="TechSupport",
+# barmode="group",  title="<b>Chrun distribution w.r.t. TechSupport</b>")
+# fig.update_layout(width=700, height=500, bargap=0.1)
+# fig.show()
+```
+
+![Chrun distribution w.r.t. TechSupport](C:/Users/47804/Desktop/customer/plot11.png)
+
+Customers without Tech Support are most likely to migrate to another service provider.  
+
+\newpage
+
+```{python}
+# color_map = {"Yes": '#00CC96', "No": '#B6E880'}
+# fig = px.histogram(df, x="Churn", color="PhoneService", 
+#       title="<b>Chrun distribution w.r.t. Phone Service</b>", 
+#       color_discrete_map=color_map)
+# fig.update_layout(width=700, height=500, bargap=0.1)
+# fig.show()
+```
+
+![Chrun distribution w.r.t. Phone Service](C:/Users/47804/Desktop/customer/plot12.png)
+
+Very small fraction of customers don't have a phone service.  
+
+Customers who have a phone service are more likely to churn.  
+
+\newpage
+
+```{python}
+no_churn = df[df["Churn"] == 'No']["MonthlyCharges"]
+yes_churn = df[df["Churn"] == 'Yes']["MonthlyCharges"]
+
+plt.figure(figsize=(10, 6))
+sns.kdeplot(no_churn, color="red", shade=True, label="Not Churn")
+sns.kdeplot(yes_churn, color="blue", shade=True, label="Churn")
+plt.xlabel("Monthly Charges")
+plt.ylabel("Density")
+plt.title("Distribution of monthly charges by churn")
+plt.legend(loc="upper right")
+plt.show()
+```
+
+Customers with higher Monthly Charges are more likely to churn.  
+
+\newpage
+
+```{python}
+no_churn = df[df["Churn"] == 'No']["TotalCharges"]
+yes_churn = df[df["Churn"] == 'Yes']["TotalCharges"]
+
+plt.figure(figsize=(10, 6))
+sns.kdeplot(no_churn, color="gold", shade=True, label="Not Churn")
+sns.kdeplot(yes_churn, color="green", shade=True, label="Churn")
+plt.xlabel("Total Charges")
+plt.ylabel("Density")
+plt.title("Distribution of total charges by churn")
+plt.legend(loc="upper right")
+plt.show()
+```
+
+Customers with lower Total Charges are more likely to churn.
+
+\newpage
+
+```{python}
+# fig = px.box(df, x='Churn', y = 'tenure')
+# # Update yaxis properties
+# fig.update_yaxes(title_text='Tenure (Months)', row=1, col=1)
+# # Update xaxis properties
+# fig.update_xaxes(title_text='Churn', row=1, col=1)
+# # Update size and title
+# fig.update_layout(autosize=True, width=750, height=600,
+#     title_font=dict(size=25, family='Courier'),
+#     title='<b>Tenure vs Churn</b>')
+# fig.show()
+```
+
+![Tenure vs Churn](C:/Users/47804/Desktop/customer/plot13.png)
+
+New customers are more likely to churn.  
+
+\newpage
+
+```{python}
+# Calculate the correlation matrix
+corr = df.apply(lambda x: pd.factorize(x)[0]).corr()
+
+# Filter the correlation matrix 
+# to include only correlations with the 'Churn' variable
+churn_corr = pd.DataFrame(corr['Churn'])
+churn_corr = churn_corr.reset_index()
+churn_corr = churn_corr.drop(churn_corr.index[-1])
+```
+
+```{python, echo = TRUE, results = 'hide'}
+import matplotlib.pyplot as plt
+
+# Generate a color map with unique colors
+num_xticks = len(churn_corr)
+color_map = plt.get_cmap('tab20')
+
+# Plotting the correlation matrix
+plt.figure(figsize=(10, 8))
+bars = plt.bar(churn_corr['index'], churn_corr['Churn'])
+
+# Assigning unique colors to xtick labels
+for i, bar in enumerate(bars):
+    bar.set_color(color_map(i % num_xticks))
+
+# Set xtick label color to black
+plt.xticks(rotation=45, color='black', fontsize=4)  
+plt.ylabel('Correlation with Churn', fontsize=8)
+plt.title('Correlation of Variables with Churn')
+plt.show()
+```
+
+\newpage
+
+# 7. Data Preprocessing
+
+**Splitting the data into train and test sets**
+
+```{python}
+def object_to_int(dataframe_series):
+    if dataframe_series.dtype=='object':
+        dataframe_series = LabelEncoder().fit_transform(dataframe_series)
+    return dataframe_series
+
+df = df.apply(lambda x: object_to_int(x))
+df.head()
+```
+
+\newpage
+
+```{python}
+plt.figure(figsize=(14,7))
+df.corr()['Churn'].sort_values(ascending = False)
+```
+
+\newpage
+
+```{python}
+X = df.drop(columns = ['Churn'])
+y = df['Churn'].values
+
+X_train, X_test, y_train, y_test = train_test_split(X,y,
+test_size = 0.30, random_state = 40, stratify=y)
+```
+
+```{python}
+def distplot(feature, frame, color='r'):
+    plt.figure(figsize=(8,4))
+    plt.title("Distribution for {}".format(feature))
+    sns.distplot(frame[feature], color= color)
+    plt.show()
+```
+
+```{python}
+num_cols = ["tenure", 'MonthlyCharges', 'TotalCharges']
+for feat in num_cols: distplot(feat, df)
+```
+
+\newpage
+
+Since the numerical features are distributed over different value ranges, we will use standard scalar to scale them down to the same range.  
+
+**Standardizing numeric attributes**
+
+```{python}
+df_std = pd.DataFrame(
+  StandardScaler().fit_transform(df[num_cols].astype('float64')),
+  columns=num_cols)
+  
+for feat in numerical_cols: distplot(feat, df_std, color='c')
+```
+
+```{python}
+scaler = StandardScaler()
+
+X_train[num_cols] = scaler.fit_transform(X_train[num_cols])
+X_test[num_cols] = scaler.transform(X_test[num_cols])
+```
+
+\newpage
+
+# 8. Machine Learning Model Evaluations and Predictions
+
+## 8.1 Logistic Regression
+
+```{python}
+lr_model = LogisticRegression(random_state=3)
+lr_model.fit(X_train,y_train)
+prediction_lr = lr_model.predict(X_test)
+accuracy_lr = accuracy_score(y_test, prediction_lr)
+print("Logistic Regression accuracy is :", accuracy_lr)
+```
+
+## 8.2 AdaBoost 
+
+```{python}
+a_model = AdaBoostClassifier(random_state=3)
+a_model.fit(X_train,y_train)
+prediction_a = a_model.predict(X_test)
+accuracy_a = accuracy_score(y_test, prediction_a)
+print("AdaBoost Classifier accuracy is :", accuracy_a)
+```
+
+\newpage
+
+## 8.3 Gradient Boosting 
+
+```{python}
+gb_model = GradientBoostingClassifier(random_state=3)
+gb_model.fit(X_train, y_train)
+prediction_gb = gb_model.predict(X_test)
+accuracy_gb = accuracy_score(y_test, prediction_gb)
+print("Gradient Boosting Classifier accuracy is", accuracy_gb)
+```
+
+## 8.4 Voting Classifier
+
+```{python}
+from sklearn.ensemble import VotingClassifier
+lr = LogisticRegression(random_state=3)
+abc = AdaBoostClassifier(random_state=3)
+gbc = GradientBoostingClassifier(random_state=3)
+
+eclf = VotingClassifier(estimators=[('lr', lr), ('abc', abc), ('gbc', gbc)], 
+                                    voting='soft', weights=[1,1,1])
+                                    
+eclf.fit(X_train, y_train)
+predictions = eclf.predict(X_test)
+accuracy_vot = accuracy_score(y_test, predictions)
+print("Voting Classifier Accuracy Score :", accuracy_vot)
+```
+
+\newpage
+
+## 8.5 Feature importance based on Voting Classifier Model
+
+```{python}
+import eli5
+from eli5.sklearn import PermutationImportance
+
+perm = PermutationImportance(eclf, random_state=1).fit(X_test, y_test)
+weights_df = eli5.formatters.as_dataframe.explain_weights_df(perm, 
+             feature_names=X_test.columns.tolist())
+             
+print(weights_df)
+```
+
+According to this table, it's better to remove some features for the predictive modeling.  
+
+\newpage
+
+```{python}
+# Create new subsets of data with only the important features
+columns_to_drop = ['StreamingMovies', 'StreamingTV', 'gender']
+
+X_train_selected = X_train.drop(columns=columns_to_drop)
+X_test_selected = X_test.drop(columns=columns_to_drop)
+
+# Train the individual classifiers on the new data
+lr_selected = LogisticRegression(random_state=3)
+abc_selected = AdaBoostClassifier(random_state=3)
+gbc_selected = GradientBoostingClassifier(random_state=3)
+
+# Update the Voting Classifier with the new classifiers
+eclf_selected = VotingClassifier(estimators=[('lr', lr_selected), 
+                                ('abc', abc_selected), ('gbc', gbc_selected)],
+                                 voting='soft', weights=[1, 1, 1])
+
+eclf_selected.fit(X_train_selected, y_train)
+predictions_selected = eclf_selected.predict(X_test_selected)
+accuracy_vot_selected = accuracy_score(y_test, predictions_selected)
+
+print("Final Voting Classifier Accuracy Score:", accuracy_vot_selected)
+
+```
+
+\newpage
+
+# 9. Advice
+
+>
+
+After conducting feature selection by removing the attributes "Streaming Movies", "Streaming TV" and "gender", our refined machine learning model demonstrates an enhanced accuracy score of 81.75%. This noteworthy improvement surpasses the previous accuracy score of the Voting Classifier, which stood at 81.70%.  
+
+>
+
+Based on the observed enhancement in our predictive model's performance, it is advisable not to implement differential pricing based on gender. Additionally, it is recommended to exclude the features related to Streaming Movies and Streaming TV Services. By adhering to these recommendations, the company can optimize its customer retention strategies, thereby strengthening customer satisfaction and loyalty.  
+

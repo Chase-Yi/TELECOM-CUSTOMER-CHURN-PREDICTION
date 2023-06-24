@@ -49,6 +49,7 @@ By following these recommendations, the company can enhance customer satisfactio
 
 ## Notes  
 This repository aims to provide a comprehensive analysis of telecom customer churn prediction and guide companies in developing effective customer retention strategies.  
+Feel free to explore the code and resources in this repository to gain insights into telecom customer churn prediction.  
 
 
 
